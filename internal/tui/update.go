@@ -24,7 +24,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Calculate content height for lists
 		listHeight := calculateContentHeight(m.height, false)
 		m.fileList.SetSize(m.width, listHeight)
+		m.fileList.SetShowHelp(false)
+		m.fileList.SetShowPagination(false)
 		m.logList.SetSize(m.width, listHeight)
+		m.logList.SetShowHelp(false)
+		m.logList.SetShowPagination(false)
 
 		// Initialize or update viewport for execute mode
 		if m.mode == modeExecute {
@@ -49,6 +53,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.width > 0 && m.height > 0 {
 			listHeight := calculateContentHeight(m.height, false)
 			m.fileList.SetSize(m.width, listHeight)
+			m.fileList.SetShowHelp(false)
+			m.fileList.SetShowPagination(false)
 		}
 
 	case enterModeMsg:
@@ -78,6 +84,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.width > 0 && m.height > 0 {
 				listHeight := calculateContentHeight(m.height, false)
 				m.fileList.SetSize(m.width, listHeight)
+				m.fileList.SetShowHelp(false)
+				m.fileList.SetShowPagination(false)
 			}
 		}
 

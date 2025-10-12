@@ -185,13 +185,11 @@ func (m model) renderExecutionContent() (content string, currentStepLine int) {
 				Foreground(colorAccent).
 				Bold(true).
 				PaddingLeft(4)
-
 			builder.WriteString(cmdLabelStyle.Render("Command:") + "\n")
 			lineCount++
 
 			commandBoxStyle := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("117")).
-				Background(lipgloss.Color("236")).
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("240")).
 				Padding(0, 1).
@@ -199,9 +197,8 @@ func (m model) renderExecutionContent() (content string, currentStepLine int) {
 				Width(m.width - 12)
 
 			wrappedCmd := wrapText("$ "+step.Command, m.width-16)
-			cmdLines := strings.Count(wrappedCmd, "\n") + 3 // +3 for border
 			builder.WriteString(commandBoxStyle.Render(wrappedCmd) + "\n\n")
-			lineCount += cmdLines + 1
+			lineCount += strings.Count(wrappedCmd, "\n") + 3 // +3 for border
 		}
 
 		// Output section with collapsible preview
@@ -216,7 +213,6 @@ func (m model) renderExecutionContent() (content string, currentStepLine int) {
 
 			outputBoxStyle := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("252")).
-				Background(lipgloss.Color("234")).
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("238")).
 				Padding(0, 1).
@@ -240,8 +236,7 @@ func (m model) renderExecutionContent() (content string, currentStepLine int) {
 			lineCount++
 
 			errorBoxStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("224")).
-				Background(lipgloss.Color("52")).
+				Foreground(colorError).
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(colorError).
 				Padding(0, 1).

@@ -79,7 +79,8 @@ func NewModel(executor ExecutorInterface, logger LoggerInterface) model {
 	fileList.Styles.Title = headerStyle
 	fileList.SetShowStatusBar(false)
 	fileList.SetFilteringEnabled(false)
-	fileList.SetShowHelp(false) // Disable list's help, use custom help bar
+	fileList.SetShowHelp(false)       // Disable list's help
+	fileList.SetShowPagination(false) // Disable pagination info
 
 	// Create log list
 	logList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 10)
@@ -87,7 +88,8 @@ func NewModel(executor ExecutorInterface, logger LoggerInterface) model {
 	logList.Styles.Title = headerStyle
 	logList.SetShowStatusBar(false)
 	logList.SetFilteringEnabled(false)
-	logList.SetShowHelp(false) // Disable list's help, use custom help bar
+	logList.SetShowHelp(false)       // Disable list's help
+	logList.SetShowPagination(false) // Disable pagination info
 
 	// Create text input for editing
 	ti := textinput.New()
