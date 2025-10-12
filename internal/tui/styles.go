@@ -22,7 +22,6 @@ var (
 
 	headerStyle = lipgloss.NewStyle().
 			Foreground(colorPrimary).
-			Background(lipgloss.Color("235")).
 			Padding(0, 1).
 			MarginBottom(1)
 
@@ -32,7 +31,6 @@ var (
 
 	statusBarStyle = lipgloss.NewStyle().
 			Foreground(colorText).
-			Background(lipgloss.Color("235")).
 			Padding(0, 1).
 			Width(80)
 
