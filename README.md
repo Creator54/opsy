@@ -2,14 +2,12 @@
 
 TUI for managing executable SOPs.
 
-## Installation
+## Quick Start
 
 ```bash
 go build .
 ./opsy        # Launch TUI
 ```
-
-## Quick Start
 
 Create Markdown SOPs in `~/.opsy/sops/`:
 
@@ -17,6 +15,11 @@ Create Markdown SOPs in `~/.opsy/sops/`:
 ~/.opsy/sops/
 ├── infra/deploy-nginx.md
 └── database/backup-postgres.md
+```
+
+**Try examples:**
+```bash
+cp -r examples ~/.opsy
 ```
 
 Opsy executes bash/shell code blocks from your Markdown files. Example:
