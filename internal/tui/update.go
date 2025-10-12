@@ -283,9 +283,12 @@ func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd
 func (m model) handleEditKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		// Save the edited command
-		if m.currentStep < len(m.steps) {
-			m.steps[m.currentStep].Command = m.textInput.Value()
+		// Save the edited command to both the temporary steps and original SOP
+		if m.currentStep < len(m.steps) && m.currentStep < len(m.sop.Steps) {
+			editedCommand := m.textInput.Value()
+			m.steps[m.currentStep].Command = editedCommand
+			// Also update the original SOP step so execution uses the edited command
+			m.sop.Steps[m.currentStep].Command = editedCommand
 			cmds = append(cmds, func() tea.Msg {
 				return enterModeMsg{
 					mode:   modeExecute,
