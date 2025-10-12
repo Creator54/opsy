@@ -95,9 +95,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
-		case "?":
-			m.showHelp = !m.showHelp
-			return m, nil
 		}
 
 		// Mode-specific key bindings
@@ -135,7 +132,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleBrowseKeys handles key events in browse mode
 func (m model) handleBrowseKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "g": // Go to parent directory
+	case "h": // Go to home (base) directory
+		baseDir := config.DefaultBaseDirectory()
+		cmds = append(cmds, func() tea.Msg {
+			return browseToDirMsg{path: baseDir}
+		})
+		m.status = "Returned to base directory"
+	case "q": // In browse mode, 'q' should quit the app
+		m.quitting = true
+		return m, tea.Quit
+	case "backspace": // Go back to parent directory
+		// Navigate to parent directory when backspace is pressed
 		parentDir := filepath.Dir(m.currentPath)
 		baseDir := config.DefaultBaseDirectory()
 
@@ -147,15 +154,6 @@ func (m model) handleBrowseKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.
 		} else {
 			m.status = "Already at base directory"
 		}
-	case "H": // Go to home (base) directory
-		baseDir := config.DefaultBaseDirectory()
-		cmds = append(cmds, func() tea.Msg {
-			return browseToDirMsg{path: baseDir}
-		})
-		m.status = "Returned to base directory"
-	case "q": // In browse mode, 'q' should quit the app
-		m.quitting = true
-		return m, tea.Quit
 	case "enter": // Handle Enter to select item
 		// Get the selected item from the list
 		if selectedItem, ok := m.fileList.SelectedItem().(item); ok {
@@ -230,7 +228,7 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 		if m.currentStep > 0 {
 			m.currentStep--
 			m.status = fmt.Sprintf("Moved to step %d", m.currentStep+1)
-			// Update viewport content to reflect new current step
+			// Update viewport content to reflect new current step and scroll to it
 			m.updateViewportContent()
 		} else {
 			m.status = "Already at top"
@@ -239,7 +237,7 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 		if m.currentStep < len(m.steps)-1 {
 			m.currentStep++
 			m.status = fmt.Sprintf("Moved to step %d", m.currentStep+1)
-			// Update viewport content to reflect new current step
+			// Update viewport content to reflect new current step and scroll to it
 			m.updateViewportContent()
 		} else {
 			m.status = "Already at last step"
@@ -255,7 +253,7 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 		executeCmds := m.handleExecuteCommands(msg)
 		cmds = append(cmds, executeCmds...)
 
-		// Also let viewport handle other keys (pgup, pgdown, etc.)
+		// Also let viewport handle other keys
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		cmds = append(cmds, cmd)

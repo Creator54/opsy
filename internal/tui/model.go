@@ -40,7 +40,6 @@ type model struct {
 	// Core state
 	width, height int
 	mode          string
-	showHelp      bool
 	quitting      bool
 
 	// Browse mode
@@ -101,7 +100,6 @@ func NewModel(executor ExecutorInterface, logger LoggerInterface) model {
 	// Initialize the model
 	m := model{
 		mode:          modeBrowse,
-		showHelp:      false,
 		currentPath:   defaultDir,
 		fileList:      fileList,
 		logList:       logList,

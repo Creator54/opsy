@@ -203,14 +203,14 @@ func (m model) getPathContext() string {
 func (m model) getHelpText() string {
 	switch m.mode {
 	case modeBrowse:
-		return "↑↓:Navigate | Enter:Open | g:Parent | H:Home | ?:Help | q:Quit"
+		return "↑↓:nav | enter:open | ←:back | h:home | q:quit"
 	case modeExecute:
-		return "↑↓/j/k:Navigate | Ctrl+u/d:Scroll | Enter:Run | e:Edit | s:Skip | l:SaveLog | ?:Help | q:Back"
+		return "↑↓:nav | pgup/pgdn:scroll | enter:run | e:edit | s:skip | l:log | q:back"
 	case modeLogs:
-		return "↑↓:Navigate | ?:Help | q:Back"
+		return "↑↓:nav | q:back"
 	case modeEdit:
-		return "Enter:Save | Esc:Cancel | ?:Help"
+		return "enter:save | esc:cancel"
 	default:
-		return "?:Help | q:Quit"
+		return "q:quit"
 	}
 }

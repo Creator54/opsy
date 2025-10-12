@@ -62,14 +62,8 @@ func (m model) renderBrowseHelpBar() string {
 		Width(m.width).
 		Foreground(colorFaint)
 	
-	var helpText string
-	if m.showHelp {
-		// Extended help
-		helpText = "↑↓:Navigate | Enter:Open | g:Parent | H:Home | ?:Help | q:Quit"
-	} else {
-		// Short help
-		helpText = "↑/k up · ↓/j down · enter open · g parent · H home · ? more · q quit"
-	}
+	// Short help only - consistent, concise text
+	helpText := "↑↓ nav · ← back · enter open · h home · q quit"
 	return helpStyle.Render(helpText)
 }
 
@@ -79,14 +73,8 @@ func (m model) renderLogsHelpBar() string {
 		Width(m.width).
 		Foreground(colorFaint)
 	
-	var helpText string
-	if m.showHelp {
-		// Extended help
-		helpText = "↑↓:Navigate | Enter:View | ?:Help | q:Back"
-	} else {
-		// Short help
-		helpText = "↑/k up · ↓/j down · enter view · ? more · q back"
-	}
+	// Short help only - consistent, concise text
+	helpText := "↑↓ nav · enter view · q back"
 	return helpStyle.Render(helpText)
 }
 
@@ -96,14 +84,8 @@ func (m model) renderExecuteHelpBar() string {
 		Width(m.width).
 		Foreground(colorFaint)
 	
-	var helpText string
-	if m.showHelp {
-		// Extended help
-		helpText = "↑↓/j/k:Navigate | Ctrl+u/d:Scroll | Enter:Run | e:Edit | s:Skip | l:SaveLog | ?:Help | q:Back"
-	} else {
-		// Short help
-		helpText = "↑/k up · ↓/j down · ctrl+u/d scroll · enter run · e edit · s skip · l log · ? more · q back"
-	}
+	// Short help only - consistent, concise text
+	helpText := "↑↓ nav · pgup/pgdn · space · enter run · e edit · s skip · l log · q back"
 	return helpStyle.Render(helpText)
 }
 
@@ -113,13 +95,7 @@ func (m model) renderEditHelpBar() string {
 		Width(m.width).
 		Foreground(colorFaint)
 	
-	var helpText string
-	if m.showHelp {
-		// Extended help
-		helpText = "Enter:Save | Esc:Cancel | ?:Help"
-	} else {
-		// Short help
-		helpText = "enter save · esc cancel · ? more"
-	}
+	// Short help only - consistent, concise text
+	helpText := "enter save · esc cancel"
 	return helpStyle.Render(helpText)
 }
