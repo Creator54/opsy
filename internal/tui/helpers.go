@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -161,6 +162,133 @@ func (m model) buildFileList(dir string) list.Model {
 	return l
 }
 
+// buildLogList builds a list of log files and directories
+func (m model) buildLogList(dir string) list.Model {
+	// Read log directory contents
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		// If error, use log directory from config
+		cfg := config.GetConfig()
+		entries, err = os.ReadDir(cfg.LogDirectory)
+		if err != nil {
+			// Last resort - empty list
+			entries = []os.DirEntry{}
+		}
+	}
+
+	var items []list.Item
+
+	// Add parent directory if not at the root log directory
+	cfg := config.GetConfig()
+	if dir != cfg.LogDirectory && dir != filepath.Dir(dir) { // Not at log root or filesystem root
+		parentDir := filepath.Dir(dir)
+		items = append(items, item{
+			title:    "../",
+			desc:     "Parent directory",
+			filePath: parentDir,
+			isDir:    true,
+		})
+	}
+
+	// Separate directories and files to sort them properly
+	var dirs []struct {
+		entry os.DirEntry
+		info  os.FileInfo
+	}
+	var files []struct {
+		entry os.DirEntry
+		info  os.FileInfo
+	}
+
+	// Get file info for sorting
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == ".." { // Skip the parent link we manually added
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			// Skip if we can't get file info
+			continue
+		}
+
+		if entry.IsDir() {
+			dirs = append(dirs, struct {
+				entry os.DirEntry
+				info  os.FileInfo
+			}{entry: entry, info: info})
+		} else if strings.HasSuffix(strings.ToLower(name), ".log.md") {
+			files = append(files, struct {
+				entry os.DirEntry
+				info  os.FileInfo
+			}{entry: entry, info: info})
+		}
+	}
+
+	// Sort directories by modification time (newest first)
+	sort.Slice(dirs, func(i, j int) bool {
+		return dirs[i].info.ModTime().After(dirs[j].info.ModTime())
+	})
+
+	// Sort files by modification time (newest first)
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].info.ModTime().After(files[j].info.ModTime())
+	})
+
+	// Add directories first (sorted)
+	for _, dirEntry := range dirs {
+		name := dirEntry.entry.Name()
+		
+		// Better description for SOP directories
+		desc := "SOP directory"
+		
+		path := filepath.Join(dir, name)
+		items = append(items, item{
+			title:    name + "/",
+			desc:     desc,
+			filePath: path,
+			isDir:    true,
+		})
+	}
+
+	// Add files (sorted)
+	for _, fileEntry := range files {
+		name := fileEntry.entry.Name()
+		
+		// Extract date and timestamp from filename for better description
+		desc := "Execution log"
+		// Try to extract date and timestamp from filename like "sop-name_DD-MM-YYYY_HH-MM-SS.log.md"
+		parts := strings.Split(strings.TrimSuffix(name, ".log.md"), "_")
+		if len(parts) >= 3 {
+			// Format should be: sop-name_date_timestamp
+			if len(parts) >= 2 {
+				date := parts[len(parts)-2] // Second to last part should be the date
+				timestamp := parts[len(parts)-1] // Last part should be the timestamp
+				if len(date) >= 10 && date[2] == '-' && date[5] == '-' &&
+				   len(timestamp) >= 8 && timestamp[2] == '-' && timestamp[5] == '-' {
+					// Looks like a date DD-MM-YYYY and timestamp HH-MM-SS
+					desc = fmt.Sprintf("Execution: %s %s", date, timestamp)
+				}
+			}
+		}
+		
+		path := filepath.Join(dir, name)
+		items = append(items, item{
+			title:    name,
+			desc:     desc,
+			filePath: path,
+			isDir:    false,
+		})
+	}
+
+	l := list.New(items, list.NewDefaultDelegate(), 0, 10)
+	l.Title = "" // Remove title to keep it professional
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+	return l
+}
+
 // getModeContext returns a string describing the current mode
 func (m model) getModeContext() string {
 	switch m.mode {
@@ -203,14 +331,14 @@ func (m model) getPathContext() string {
 func (m model) getHelpText() string {
 	switch m.mode {
 	case modeBrowse:
-		return "↑↓:nav | enter:open | ←:back | h:home | q:quit"
+		return "↑↓ nav · ←/bs back · enter select · h home · l logs · q quit"
 	case modeExecute:
-		return "↑↓:nav | pgup/pgdn:scroll | enter:run | e:edit | s:skip | l:log | q:back"
+		return "↑↓ nav · enter run · e edit · s skip · l logs · q back"
 	case modeLogs:
-		return "↑↓:nav | q:back"
+		return "↑↓ nav · ←/bs back · enter select · q back"
 	case modeEdit:
-		return "enter:save | esc:cancel"
+		return "enter save · esc cancel"
 	default:
-		return "q:quit"
+		return "q quit"
 	}
 }

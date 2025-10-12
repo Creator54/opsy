@@ -2,10 +2,11 @@ package tui
 
 // Mode constants
 const (
-	modeBrowse  = "browse"
-	modeExecute = "execute"
-	modeLogs    = "logs"
-	modeEdit    = "edit"
+	modeBrowse   = "browse"
+	modeExecute  = "execute"
+	modeLogs     = "logs"
+	modeLogView  = "logview"
+	modeEdit     = "edit"
 )
 
 // UI layout constants

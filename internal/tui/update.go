@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -76,6 +77,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewportReady = true
 			m.updateViewportContent()
 		}
+		// Initialize and refresh log list when entering logs mode
+		if msg.mode == modeLogs {
+			cfg := config.GetConfig()
+			m.logList = m.buildLogList(cfg.LogDirectory)
+			// Ensure proper sizing
+			if m.width > 0 && m.height > 0 {
+				listHeight := calculateContentHeight(m.height, false)
+				m.logList.SetSize(m.width, listHeight)
+				m.logList.SetShowHelp(false)
+				m.logList.SetShowPagination(false)
+			}
+		}
 		// Refresh file list when returning to browse
 		if msg.mode == modeBrowse {
 			m.fileList = m.buildFileList(m.currentPath)
@@ -138,6 +151,14 @@ func (m model) handleBrowseKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.
 			return browseToDirMsg{path: baseDir}
 		})
 		m.status = "Returned to base directory"
+	case "l": // Go to logs directory
+		cmds = append(cmds, func() tea.Msg {
+			return enterModeMsg{
+				mode:   modeLogs,
+				status: "Entered logs browser",
+			}
+		})
+		m.status = "Entering logs browser"
 	case "q": // In browse mode, 'q' should quit the app
 		m.quitting = true
 		return m, tea.Quit
@@ -265,16 +286,179 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q": // 'q' in log mode goes back to browse
-		cmds = append(cmds, func() tea.Msg {
-			return enterModeMsg{
-				mode:   modeBrowse,
-				status: "Returned to SOP browser",
+		if m.logViewReady {
+			// Exit log view mode and return to log list
+			m.logViewReady = false
+			m.logViewContent = ""
+			m.logViewPath = ""
+			m.status = "Returned to log list"
+		} else {
+			// Return to browse mode
+			cmds = append(cmds, func() tea.Msg {
+				return enterModeMsg{
+					mode:   modeBrowse,
+					status: "Returned to SOP browser",
+				}
+			})
+		}
+	case "backspace": // Go back to parent directory in logs mode
+		// Navigate to parent directory when backspace is pressed
+		parentDir := filepath.Dir(m.currentPath)
+		cfg := config.GetConfig()
+		logsDir := cfg.LogDirectory
+
+		if m.currentPath != logsDir && parentDir != m.currentPath {
+			// Build log list for parent directory
+			m.logList = m.buildLogList(parentDir)
+			m.currentPath = parentDir
+			m.status = "Moved to parent directory"
+			// Ensure proper sizing
+			if m.width > 0 && m.height > 0 {
+				listHeight := calculateContentHeight(m.height, false)
+				m.logList.SetSize(m.width, listHeight)
+				m.logList.SetShowHelp(false)
+				m.logList.SetShowPagination(false)
 			}
-		})
+		} else {
+			m.status = "Already at logs root directory"
+		}
+	case "enter": // Handle Enter to select item in log mode
+		// Only process Enter if not already viewing a log file
+		if !m.logViewReady {
+			// Get the selected item from the list
+			if selectedItem, ok := m.logList.SelectedItem().(item); ok {
+				// Check if this is a parent directory reference
+				if selectedItem.title == "../" {
+					// Handle parent directory case
+					cfg := config.GetConfig()
+					parentDir := filepath.Dir(m.currentPath)
+					
+					// Only go back if not at the log root directory
+					if m.currentPath != cfg.LogDirectory && parentDir != m.currentPath {
+						// Build log list for parent directory
+						m.logList = m.buildLogList(parentDir)
+						m.currentPath = parentDir
+						m.status = "Moved to parent directory"
+						// Ensure proper sizing
+						if m.width > 0 && m.height > 0 {
+							listHeight := calculateContentHeight(m.height, false)
+							m.logList.SetSize(m.width, listHeight)
+							m.logList.SetShowHelp(false)
+							m.logList.SetShowPagination(false)
+						}
+					} else {
+						m.status = "Already at log root directory"
+					}
+				} else if selectedItem.isDir {
+					// Enter directory
+					m.logList = m.buildLogList(selectedItem.filePath)
+					m.currentPath = selectedItem.filePath
+					m.status = fmt.Sprintf("Entered: %s", selectedItem.title)
+					// Ensure proper sizing
+					if m.width > 0 && m.height > 0 {
+						listHeight := calculateContentHeight(m.height, false)
+						m.logList.SetSize(m.width, listHeight)
+						m.logList.SetShowHelp(false)
+						m.logList.SetShowPagination(false)
+					}
+				} else {
+					// View log file content
+					content, err := os.ReadFile(selectedItem.filePath)
+					if err != nil {
+						m.status = fmt.Sprintf("Error reading log file: %v", err)
+					} else {
+						// Store the log content and path
+						m.logViewContent = string(content)
+						m.logViewPath = selectedItem.filePath
+						
+						// Switch to a simple log viewing mode (using a viewport)
+						viewportHeight := calculateContentHeight(m.height, true)
+						m.logViewPort = viewport.New(m.width, viewportHeight)
+						m.logViewPort.YPosition = 0
+						m.logViewPort.SetContent(m.logViewContent)
+						m.logViewReady = true
+						m.status = fmt.Sprintf("Viewing log: %s", selectedItem.title)
+					}
+				}
+			}
+		}
+	case "up", "k": // Scroll up
+		if m.logViewReady {
+			m.logViewPort.LineUp(1)
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "down", "j": // Scroll down
+		if m.logViewReady {
+			m.logViewPort.LineDown(1)
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "pgup": // Page up
+		if m.logViewReady {
+			m.logViewPort.PageUp()
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "pgdown", " ": // Page down or space
+		if m.logViewReady {
+			m.logViewPort.PageDown()
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "home": // Go to top
+		if m.logViewReady {
+			m.logViewPort.GotoTop()
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "ctrl+u": // Scroll view up by half page
+		if m.logViewReady {
+			m.logViewPort.HalfViewUp()
+			m.status = "Scrolled up"
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "ctrl+d": // Scroll view down by half page
+		if m.logViewReady {
+			m.logViewPort.HalfViewDown()
+			m.status = "Scrolled down"
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "end": // Go to bottom
+		if m.logViewReady {
+			m.logViewPort.GotoBottom()
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	default:
-		var cmd tea.Cmd
-		m.logList, cmd = m.logList.Update(msg)
-		cmds = append(cmds, cmd)
+		// Handle scrolling when viewing log content
+		if m.logViewReady {
+			var cmd tea.Cmd
+			m.logViewPort, cmd = m.logViewPort.Update(msg)
+			cmds = append(cmds, cmd)
+		} else {
+			var cmd tea.Cmd
+			m.logList, cmd = m.logList.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -339,6 +523,9 @@ func (m *model) handleExecuteCommands(msg tea.KeyMsg) []tea.Cmd {
 			}
 			// Update viewport content to show execution results
 			m.updateViewportContent()
+			
+			// Save incremental log after each command execution
+			cmds = append(cmds, m.saveExecutionLog())
 		}
 	case "e":
 		// Edit command
@@ -361,8 +548,13 @@ func (m *model) handleExecuteCommands(msg tea.KeyMsg) []tea.Cmd {
 			m.updateViewportContent()
 		}
 	case "l":
-		// Save execution log (implementation from handlers)
-		cmds = append(cmds, m.saveExecutionLog())
+		// Go to logs browser
+		cmds = append(cmds, func() tea.Msg {
+			return enterModeMsg{
+				mode:   modeLogs,
+				status: "Entered logs browser",
+			}
+		})
 	}
 	return cmds
 }

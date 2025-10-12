@@ -37,26 +37,23 @@ func NewLogger() (*Logger, error) {
 
 // LogExecution saves the execution results of an SOP to a log file
 func (l *Logger) LogExecution(execution types.SOPExecution) (string, error) {
-	// Create the daily subdirectory (e.g., 09-10-2025)
-	dateStr := execution.StartedAt.Format("02-01-2006") // DD-MM-YYYY format
-	dailyLogDir := filepath.Join(l.logDirectory, dateStr)
-	
-	// Create subdirectory for the SOP's folder
+	// Create subdirectory for the SOP's folder first
 	sopDir := filepath.Base(filepath.Dir(execution.SOPPath))
 	if sopDir == "." || sopDir == "/" {
 		sopDir = "default" // Use default if SOP is in root
 	}
-	logSubDir := filepath.Join(dailyLogDir, sopDir)
+	sopLogDir := filepath.Join(l.logDirectory, sopDir)
 	
-	if err := os.MkdirAll(logSubDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create log subdirectory: %w", err)
+	if err := os.MkdirAll(sopLogDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create SOP log directory: %w", err)
 	}
 	
-	// Create filename with timestamp (e.g., deploy-nginx_22-37-14.log.md)
+	// Create filename with date and timestamp (e.g., deploy-nginx_09-10-2025_22-37-14.log.md)
 	sopName := strings.TrimSuffix(filepath.Base(execution.SOPPath), ".md")
+	dateStr := execution.StartedAt.Format("02-01-2006") // DD-MM-YYYY format
 	timestamp := execution.StartedAt.Format("15-04-05") // HH-MM-SS format
-	filename := fmt.Sprintf("%s_%s.log.md", sopName, timestamp)
-	logPath := filepath.Join(logSubDir, filename)
+	filename := fmt.Sprintf("%s_%s_%s.log.md", sopName, dateStr, timestamp)
+	logPath := filepath.Join(sopLogDir, filename)
 	
 	// Convert execution to log file format
 	logFile := l.executionToLogFile(execution)

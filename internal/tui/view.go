@@ -35,10 +35,18 @@ func (m model) View() string {
 			content = "Loading..."
 		}
 	case modeLogs:
-		m.logList.Title = m.getPathContext()
-		logContent := m.logList.View()
-		helpBar := m.renderLogsHelpBar()
-		content = logContent + "\n\n" + helpBar
+		if m.logViewReady {
+			// Show log file content in viewport
+			logViewContent := m.logViewPort.View()
+			helpBar := m.renderLogsHelpBar()
+			content = logViewContent + "\n\n" + helpBar
+		} else {
+			// Show log list
+			m.logList.Title = m.getPathContext()
+			logContent := m.logList.View()
+			helpBar := m.renderLogsHelpBar()
+			content = logContent + "\n\n" + helpBar
+		}
 	case modeEdit:
 		// Show edit view with help bar
 		editContent := m.renderEditView()
@@ -63,7 +71,7 @@ func (m model) renderBrowseHelpBar() string {
 		Foreground(colorFaint)
 	
 	// Short help only - consistent, concise text
-	helpText := "↑↓ nav · ← back · enter open · h home · q quit"
+	helpText := "↑↓ nav · ←/bs back · enter select · h home · l logs · q quit"
 	return helpStyle.Render(helpText)
 }
 
@@ -74,7 +82,14 @@ func (m model) renderLogsHelpBar() string {
 		Foreground(colorFaint)
 	
 	// Short help only - consistent, concise text
-	helpText := "↑↓ nav · enter view · q back"
+	if m.logViewReady {
+		// Help text when viewing a log file
+		helpText := "↑↓ nav · q back"
+		return helpStyle.Render(helpText)
+	}
+	
+	// Help text when browsing log files
+	helpText := "↑↓ nav · ←/bs back · enter select · q back"
 	return helpStyle.Render(helpText)
 }
 
@@ -85,7 +100,7 @@ func (m model) renderExecuteHelpBar() string {
 		Foreground(colorFaint)
 	
 	// Short help only - consistent, concise text
-	helpText := "↑↓ nav · pgup/pgdn · space · enter run · e edit · s skip · l log · q back"
+	helpText := "↑↓ nav · enter run · e edit · s skip · l logs · q back"
 	return helpStyle.Render(helpText)
 }
 

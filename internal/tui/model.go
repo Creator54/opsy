@@ -58,7 +58,11 @@ type model struct {
 	textarea  textarea.Model
 
 	// Log mode
-	logList list.Model
+	logList        list.Model
+	logViewPort    viewport.Model
+	logViewReady   bool
+	logViewContent string
+	logViewPath    string
 
 	// Services
 	executor ExecutorInterface
@@ -99,15 +103,16 @@ func NewModel(executor ExecutorInterface, logger LoggerInterface) model {
 
 	// Initialize the model
 	m := model{
-		mode:          modeBrowse,
-		currentPath:   defaultDir,
-		fileList:      fileList,
-		logList:       logList,
-		executor:      executor,
-		logger:        logger,
-		textInput:     ti,
-		status:        "Ready",
-		viewportReady: false,
+		mode:           modeBrowse,
+		currentPath:    defaultDir,
+		fileList:       fileList,
+		logList:        logList,
+		logViewReady:   false,
+		executor:       executor,
+		logger:         logger,
+		textInput:      ti,
+		status:         "Ready",
+		viewportReady:  false,
 	}
 
 	// Build initial file list
