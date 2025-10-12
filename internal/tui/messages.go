@@ -12,6 +12,8 @@ type enterModeMsg struct {
 	status string
 	sop    *types.SOP
 	steps  []SOPStep
+	path   string // Path for context (used for logs filtering)
+	from   string // Previous mode when entering logs mode
 }
 
 // item represents a file/directory in the browser

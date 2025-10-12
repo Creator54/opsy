@@ -319,7 +319,15 @@ func (m model) getPathContext() string {
 		}
 		return ""
 	case modeLogs:
-		return "Execution logs directory"
+		if m.logViewReady {
+			// When viewing a log file, show the file name
+			if m.logViewPath != "" {
+				return filepath.Base(m.logViewPath)
+			}
+			return "Log file view"
+		}
+		// When browsing logs, show the current directory path
+		return m.currentPath
 	case modeEdit:
 		return fmt.Sprintf("Step %d/%d", m.currentStep+1, len(m.steps))
 	default:

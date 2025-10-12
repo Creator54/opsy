@@ -63,6 +63,8 @@ type model struct {
 	logViewReady   bool
 	logViewContent string
 	logViewPath    string
+	sopPath        string // Store SOP path when entering logs mode
+	previousMode   string // Store previous mode when entering logs mode
 
 	// Services
 	executor ExecutorInterface

@@ -80,7 +80,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Initialize and refresh log list when entering logs mode
 		if msg.mode == modeLogs {
 			cfg := config.GetConfig()
-			m.logList = m.buildLogList(cfg.LogDirectory)
+			// Store SOP path for returning to browse mode
+			m.sopPath = m.currentPath
+			// Store previous mode for proper return
+			m.previousMode = msg.from
+			// Determine which logs to show based on context
+			logsPath := cfg.LogDirectory
+			if msg.path != "" {
+				// If we have a context path, try to find corresponding logs
+				currentFolder := filepath.Base(msg.path)
+				if currentFolder != "." && currentFolder != "/" {
+					// Check if there's a logs subdirectory for this SOP folder
+					contextLogsPath := filepath.Join(cfg.LogDirectory, currentFolder)
+					if _, err := os.Stat(contextLogsPath); err == nil {
+						logsPath = contextLogsPath
+					}
+				}
+			}
+			m.logList = m.buildLogList(logsPath)
+			m.currentPath = logsPath // Update current path to logs path
 			// Ensure proper sizing
 			if m.width > 0 && m.height > 0 {
 				listHeight := calculateContentHeight(m.height, false)
@@ -91,6 +109,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Refresh file list when returning to browse
 		if msg.mode == modeBrowse {
+			// Restore SOP path if we were in logs mode
+			if m.sopPath != "" {
+				m.currentPath = m.sopPath
+				m.sopPath = "" // Clear the stored SOP path
+			}
 			m.fileList = m.buildFileList(m.currentPath)
 			m.viewportReady = false
 			// Ensure proper sizing
@@ -156,6 +179,8 @@ func (m model) handleBrowseKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.
 			return enterModeMsg{
 				mode:   modeLogs,
 				status: "Entered logs browser",
+				path:   m.currentPath, // Pass current path for logs filtering
+				from:   m.mode,        // Pass current mode as previous mode
 			}
 		})
 		m.status = "Entering logs browser"
@@ -285,7 +310,7 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 // handleLogKeys handles key events in log mode
 func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q": // 'q' in log mode goes back to browse
+	case "q": // 'q' in log mode goes back to previous mode
 		if m.logViewReady {
 			// Exit log view mode and return to log list
 			m.logViewReady = false
@@ -293,14 +318,35 @@ func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd
 			m.logViewPath = ""
 			m.status = "Returned to log list"
 		} else {
-			// Return to browse mode
+			// Return to previous mode
+			var returnMode string
+			var status string
+			
+			// Determine which mode to return to based on where we came from
+			switch m.previousMode {
+			case modeExecute:
+				returnMode = modeExecute
+				status = "Returned to SOP execution"
+			default:
+				returnMode = modeBrowse
+				status = "Returned to SOP browser"
+			}
+			
 			cmds = append(cmds, func() tea.Msg {
 				return enterModeMsg{
-					mode:   modeBrowse,
-					status: "Returned to SOP browser",
+					mode:   returnMode,
+					status: status,
 				}
 			})
 		}
+	case "h": // Go to home (base) directory from logs mode
+		cmds = append(cmds, func() tea.Msg {
+			return enterModeMsg{
+				mode:   modeBrowse,
+				status: "Returned to base directory",
+			}
+		})
+		m.status = "Returned to base directory"
 	case "backspace": // Go back to parent directory in logs mode
 		// Navigate to parent directory when backspace is pressed
 		parentDir := filepath.Dir(m.currentPath)
@@ -553,6 +599,8 @@ func (m *model) handleExecuteCommands(msg tea.KeyMsg) []tea.Cmd {
 			return enterModeMsg{
 				mode:   modeLogs,
 				status: "Entered logs browser",
+				path:   filepath.Dir(m.sop.Path), // Pass SOP directory path for logs filtering
+				from:   m.mode,                  // Pass current mode as previous mode
 			}
 		})
 	}

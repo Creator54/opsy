@@ -68,3 +68,26 @@ func TestGetModeContext(t *testing.T) {
 	model.mode = modeEdit
 	assert.Equal(t, "Edit", model.getModeContext())
 }
+
+func TestGetPathContext(t *testing.T) {
+	executor := &MockExecutor{}
+	logger := &MockLogger{}
+	model := NewModel(executor, logger)
+	
+	// Test browse mode
+	model.mode = modeBrowse
+	model.currentPath = t.TempDir()
+	assert.Equal(t, model.currentPath, model.getPathContext())
+	
+	// Test logs mode when browsing
+	model.mode = modeLogs
+	model.currentPath = t.TempDir()
+	model.logViewReady = false
+	assert.Equal(t, model.currentPath, model.getPathContext())
+	
+	// Test logs mode when viewing a file
+	model.mode = modeLogs
+	model.logViewReady = true
+	model.logViewPath = t.TempDir() + "/test.log"
+	assert.Equal(t, "test.log", model.getPathContext())
+}
