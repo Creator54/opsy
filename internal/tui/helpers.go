@@ -13,10 +13,9 @@ import (
 	"opsy/internal/parser"
 )
 
-// calculateContentHeight calculates the available height for content
-// All modes now have custom help bars with consistent spacing
-func calculateContentHeight(totalHeight int, isExecuteMode bool) int {
-	// All modes use: header(1) + newline(1) + spacing(2) + helpbar(1) = 5 lines
+// calculateViewportHeight calculates the available height for viewport content
+// All modes use: header(1) + newline(1) + spacing(2) + helpbar(1) = 5 lines
+func calculateViewportHeight(totalHeight int) int {
 	contentHeight := totalHeight - executeUIChromeHeight
 	
 	if contentHeight < minContentHeight {
@@ -300,6 +299,11 @@ func (m model) getModeContext() string {
 		}
 		return "Execution"
 	case modeLogs:
+		if m.logViewReady && m.logMetadata.SOPPath != "" {
+			// Show SOP name when viewing a log
+			sopName := extractSOPName(m.logMetadata.SOPPath)
+			return fmt.Sprintf("Logs: %s", sopName)
+		}
 		return "Logs"
 	case modeEdit:
 		return "Edit"

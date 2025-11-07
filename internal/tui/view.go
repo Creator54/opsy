@@ -83,8 +83,8 @@ func (m model) renderLogsHelpBar() string {
 	
 	// Short help only - consistent, concise text
 	if m.logViewReady {
-		// Help text when viewing a log file
-		helpText := "↑↓ nav · q back"
+		// Help text when viewing a log file (execute-mode-like navigation)
+		helpText := "↑↓ nav steps · ctrl+u/d scroll · q back"
 		return helpStyle.Render(helpText)
 	}
 	

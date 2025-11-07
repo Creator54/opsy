@@ -53,8 +53,9 @@ func (m model) saveExecutionLog() tea.Cmd {
 				StepID:       step.ID,
 				OriginalStep: m.sop.Steps[i],
 				ExecutionResult: &types.ExecutionResult{
-					Status: step.Status,
-					Output: step.Output,
+					ExecutedAt: step.ExecutedAt,
+					Status:     step.Status,
+					Output:     step.Output,
 				},
 			})
 		}

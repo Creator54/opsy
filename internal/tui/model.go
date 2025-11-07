@@ -2,6 +2,7 @@ package tui
 
 import (
 	"os"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -33,6 +34,7 @@ type SOPStep struct {
 	Status      string // "pending", "executed", "skipped", "error"
 	Output      string
 	Error       string
+	ExecutedAt  time.Time // When the step was executed
 }
 
 // model represents the application state
@@ -65,11 +67,19 @@ type model struct {
 	logViewPath    string
 	sopPath        string // Store SOP path when entering logs mode
 	previousMode   string // Store previous mode when entering logs mode
+	
+	// Log execution view (similar to execute mode but read-only)
+	logMetadata    LogMetadata
+	logSteps       []LogStep
+	currentLogStep int
 
 	// Services
 	executor ExecutorInterface
 	logger   LoggerInterface
 	status   string
+
+	// Scroll state
+	manualScrollActive bool // Track if user has manually scrolled viewport
 }
 
 // NewModel creates a new TUI model
@@ -105,16 +115,17 @@ func NewModel(executor ExecutorInterface, logger LoggerInterface) model {
 
 	// Initialize the model
 	m := model{
-		mode:           modeBrowse,
-		currentPath:    defaultDir,
-		fileList:       fileList,
-		logList:        logList,
-		logViewReady:   false,
-		executor:       executor,
-		logger:         logger,
-		textInput:      ti,
-		status:         "Ready",
-		viewportReady:  false,
+		mode:               modeBrowse,
+		currentPath:        defaultDir,
+		fileList:           fileList,
+		logList:            logList,
+		logViewReady:       false,
+		executor:           executor,
+		logger:             logger,
+		textInput:          ti,
+		status:             "Ready",
+		viewportReady:      false,
+		manualScrollActive: false,
 	}
 
 	// Build initial file list

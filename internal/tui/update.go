@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -23,7 +24,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		
 		// Calculate content height for lists
-		listHeight := calculateContentHeight(m.height, false)
+		listHeight := calculateViewportHeight(m.height)
 		m.fileList.SetSize(m.width, listHeight)
 		m.fileList.SetShowHelp(false)
 		m.fileList.SetShowPagination(false)
@@ -33,7 +34,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Initialize or update viewport for execute mode
 		if m.mode == modeExecute {
-			viewportHeight := calculateContentHeight(m.height, true)
+			viewportHeight := calculateViewportHeight(m.height)
 			if !m.viewportReady {
 				m.viewport = viewport.New(m.width, viewportHeight)
 				m.viewport.YPosition = 0
@@ -46,13 +47,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Update log viewport dimensions if in log view mode
+		if m.mode == modeLogs && m.logViewReady {
+			viewportHeight := calculateViewportHeight(m.height)
+			m.logViewPort.Width = m.width
+			m.logViewPort.Height = viewportHeight
+			// Re-render content with new width
+			m.updateLogViewportContent()
+		}
+
 	case browseToDirMsg:
 		m.currentPath = msg.path
 		m.fileList = m.buildFileList(m.currentPath)
 		m.status = fmt.Sprintf("Directory changed to: %s", filepath.Base(msg.path))
 		// Ensure the list is properly sized and configured
 		if m.width > 0 && m.height > 0 {
-			listHeight := calculateContentHeight(m.height, false)
+			listHeight := calculateViewportHeight(m.height)
 			m.fileList.SetSize(m.width, listHeight)
 			m.fileList.SetShowHelp(false)
 			m.fileList.SetShowPagination(false)
@@ -71,7 +81,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Initialize viewport when entering execute mode
 		if msg.mode == modeExecute {
-			viewportHeight := calculateContentHeight(m.height, true)
+			viewportHeight := calculateViewportHeight(m.height)
 			m.viewport = viewport.New(m.width, viewportHeight)
 			m.viewport.YPosition = 0
 			m.viewportReady = true
@@ -101,7 +111,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentPath = logsPath // Update current path to logs path
 			// Ensure proper sizing
 			if m.width > 0 && m.height > 0 {
-				listHeight := calculateContentHeight(m.height, false)
+				listHeight := calculateViewportHeight(m.height)
 				m.logList.SetSize(m.width, listHeight)
 				m.logList.SetShowHelp(false)
 				m.logList.SetShowPagination(false)
@@ -118,7 +128,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewportReady = false
 			// Ensure proper sizing
 			if m.width > 0 && m.height > 0 {
-				listHeight := calculateContentHeight(m.height, false)
+				listHeight := calculateViewportHeight(m.height)
 				m.fileList.SetSize(m.width, listHeight)
 				m.fileList.SetShowHelp(false)
 				m.fileList.SetShowPagination(false)
@@ -273,6 +283,7 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 	case "up", "k": // Navigate up to previous step
 		if m.currentStep > 0 {
 			m.currentStep--
+			m.manualScrollActive = false // Re-enable auto-scroll on step navigation
 			m.status = fmt.Sprintf("Moved to step %d", m.currentStep+1)
 			// Update viewport content to reflect new current step and scroll to it
 			m.updateViewportContent()
@@ -282,6 +293,7 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 	case "down", "j": // Navigate down to next step
 		if m.currentStep < len(m.steps)-1 {
 			m.currentStep++
+			m.manualScrollActive = false // Re-enable auto-scroll on step navigation
 			m.status = fmt.Sprintf("Moved to step %d", m.currentStep+1)
 			// Update viewport content to reflect new current step and scroll to it
 			m.updateViewportContent()
@@ -290,9 +302,11 @@ func (m *model) handleExecuteKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, te
 		}
 	case "ctrl+u": // Scroll view up by half page
 		m.viewport.HalfViewUp()
+		m.manualScrollActive = true // Disable auto-scroll on manual scroll
 		m.status = "Scrolled up"
 	case "ctrl+d": // Scroll view down by half page
 		m.viewport.HalfViewDown()
+		m.manualScrollActive = true // Disable auto-scroll on manual scroll
 		m.status = "Scrolled down"
 	default:
 		// Handle execute mode commands (enter, e, s, l)
@@ -360,7 +374,7 @@ func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd
 			m.status = "Moved to parent directory"
 			// Ensure proper sizing
 			if m.width > 0 && m.height > 0 {
-				listHeight := calculateContentHeight(m.height, false)
+				listHeight := calculateViewportHeight(m.height)
 				m.logList.SetSize(m.width, listHeight)
 				m.logList.SetShowHelp(false)
 				m.logList.SetShowPagination(false)
@@ -387,7 +401,7 @@ func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd
 						m.status = "Moved to parent directory"
 						// Ensure proper sizing
 						if m.width > 0 && m.height > 0 {
-							listHeight := calculateContentHeight(m.height, false)
+							listHeight := calculateViewportHeight(m.height)
 							m.logList.SetSize(m.width, listHeight)
 							m.logList.SetShowHelp(false)
 							m.logList.SetShowPagination(false)
@@ -402,7 +416,7 @@ func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd
 					m.status = fmt.Sprintf("Entered: %s", selectedItem.title)
 					// Ensure proper sizing
 					if m.width > 0 && m.height > 0 {
-						listHeight := calculateContentHeight(m.height, false)
+						listHeight := calculateViewportHeight(m.height)
 						m.logList.SetSize(m.width, listHeight)
 						m.logList.SetShowHelp(false)
 						m.logList.SetShowPagination(false)
@@ -417,28 +431,46 @@ func (m model) handleLogKeys(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd
 						m.logViewContent = string(content)
 						m.logViewPath = selectedItem.filePath
 						
-						// Switch to a simple log viewing mode (using a viewport)
-						viewportHeight := calculateContentHeight(m.height, true)
+						// Parse log file into structured data
+						m.logMetadata, m.logSteps = ParseLogFile(m.logViewContent)
+						m.currentLogStep = 0
+						
+						// Switch to log viewing mode (using a viewport)
+						viewportHeight := calculateViewportHeight(m.height)
 						m.logViewPort = viewport.New(m.width, viewportHeight)
 						m.logViewPort.YPosition = 0
-						m.logViewPort.SetContent(m.logViewContent)
 						m.logViewReady = true
+						
+						// Render log content with execute-mode-like styling
+						m.updateLogViewportContent()
 						m.status = fmt.Sprintf("Viewing log: %s", selectedItem.title)
 					}
 				}
 			}
 		}
-	case "up", "k": // Scroll up
+	case "up", "k": // Navigate up to previous step (in log view) or scroll list
 		if m.logViewReady {
-			m.logViewPort.LineUp(1)
+			if m.currentLogStep > 0 {
+				m.currentLogStep--
+				m.status = fmt.Sprintf("Viewing step %d", m.currentLogStep+1)
+				m.updateLogViewportContent()
+			} else {
+				m.status = "Already at first step"
+			}
 		} else {
 			var cmd tea.Cmd
 			m.logList, cmd = m.logList.Update(msg)
 			cmds = append(cmds, cmd)
 		}
-	case "down", "j": // Scroll down
+	case "down", "j": // Navigate down to next step (in log view) or scroll list
 		if m.logViewReady {
-			m.logViewPort.LineDown(1)
+			if m.currentLogStep < len(m.logSteps)-1 {
+				m.currentLogStep++
+				m.status = fmt.Sprintf("Viewing step %d", m.currentLogStep+1)
+				m.updateLogViewportContent()
+			} else {
+				m.status = "Already at last step"
+			}
 		} else {
 			var cmd tea.Cmd
 			m.logList, cmd = m.logList.Update(msg)
@@ -557,10 +589,12 @@ func (m *model) handleExecuteCommands(msg tea.KeyMsg) []tea.Cmd {
 			if err != nil {
 				m.steps[m.currentStep].Status = statusError
 				m.steps[m.currentStep].Error = err.Error()
+				m.steps[m.currentStep].ExecutedAt = time.Now()
 				m.status = fmt.Sprintf("Error executing step: %v", err)
 			} else {
 				m.steps[m.currentStep].Status = result.Status
 				m.steps[m.currentStep].Output = result.Output
+				m.steps[m.currentStep].ExecutedAt = result.ExecutedAt
 				if result.Status == statusSuccess {
 					m.status = "Step executed successfully"
 				} else {
